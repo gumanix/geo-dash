@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Geo Svet</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    canvas {
+      background: #1e1e1e;
+      border: 3px solid #444;
+    }
+  </style>
+</head>
+<body>
+<canvas id="game" width="900" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const GRAVITY = 0.9;
+const JUMP = -14;
+let gameState = "menu";
+let levelIndex = 0;
+
+const colors = ["red", "lime", "deepskyblue", "yellow"];
+let colorIndex = 0;
+
+const levels = [
+  { spikes: [400, 550, 700], rocket: null },
+  { spikes: [350, 450, 650, 800], rocket: 500 },
+  { spikes: [300, 380, 460, 540, 620], rocket: 350 }
+];
+
+const player = {
+  x: 120,
+  y: 360,
+  w: 40,
+  h: 40,
+  vy: 0,
+  onGround: false,
+  mode: "cube",
+  color: colors[colorIndex]
+};
+
+let mouseDown = false;
+
+// INPUT
+window.addEventListener("keydown", e => {
+  if (gameState === "menu") {
+    if (e.key === "a") colorIndex = (colorIndex - 1 + colors.length) % colors.length;
+    if (e.key === "d") colorIndex = (colorIndex + 1) % colors.length;
+    if (e.key === "Enter") startGame();
+  }
+  if (e.key === " ") jump();
+});
+
+window.addEventListener("mousedown", () => mouseDown = true);
+window.addEventListener("mouseup", () => mouseDown = false);
+
+function startGame() {
+  gameState = "play";
+  levelIndex = 0;
+  resetPlayer();
+}
+
+function resetPlayer() {
+  player.x = 120;
+  player.y = 360;
+  player.vy = 0;
+  player.mode = "cube";
+  player.color = colors[colorIndex];
+}
+
+function jump() {
+  if (player.onGround && player.mode === "cube") {
+    player.vy = JUMP;
+  }
+}
+
+function updatePlayer() {
+  if (player.mode === "cube") {
+    player.vy += GRAVITY;
+  } else {
+    player.vy = mouseDown ? -4 : 4;
+  }
+
+  player.y += player.vy;
+
+  if (player.y + player.h >= 420) {
+    player.y = 420 - player.h;
+    player.vy = 0;
+    player.onGround = true;
+  } else {
+    player.onGround = false;
+  }
+}
+
+function drawPlayer() {
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+}
+
+function rectsCollide(a, b) {
+  return a.x < b.x + b.w &&
+         a.x + a.w > b.x &&
+         a.y < b.y + b.h &&
+         a.y + a.h > b.y;
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (gameState === "menu") {
+    ctx.fillStyle = "white";
+    ctx.font = "48px Arial";
+    ctx.fillText("Geo Svet", 330, 120);
+
+    ctx.font = "22px Arial";
+    ctx.fillText("ENTER - Štart", 370, 180);
+    ctx.fillText("A / D - Farba kocky", 330, 220);
+
+    ctx.fillStyle = colors[colorIndex];
+    ctx.fillRect(430, 260, 40, 40);
+  }
+
+  if (gameState === "play") {
+    const level = levels[levelIndex];
+
+    // zem
+    ctx.fillStyle = "#444";
+    ctx.fillRect(0, 420, canvas.width, 80);
+
+    updatePlayer();
+    drawPlayer();
+
+    // ostne
+    ctx.fillStyle = "red";
+    for (let x of level.spikes) {
+      const spike = { x: x - levelIndex * 900, y: 380, w: 30, h: 40 };
+      ctx.beginPath();
+      ctx.moveTo(spike.x, spike.y + spike.h);
+      ctx.lineTo(spike.x + spike.w / 2, spike.y);
+      ctx.lineTo(spike.x + spike.w, spike.y + spike.h);
+      ctx.fill();
+
+      if (rectsCollide(player, spike)) gameState = "menu";
+    }
+
+    // raketa
+    if (level.rocket !== null) {
+      const rocket = { x: level.rocket - levelIndex * 900, y: 340, w: 40, h: 80 };
+      ctx.strokeStyle = "yellow";
+      ctx.strokeRect(rocket.x, rocket.y, rocket.w, rocket.h);
+
+      if (rectsCollide(player, rocket)) player.mode = "rocket";
+    }
+
+    // posun levelu
+    if (player.x > canvas.width - 100) {
+      levelIndex++;
+      if (levelIndex >= levels.length) gameState = "win";
+      resetPlayer();
+    }
+  }
+
+  if (gameState === "win") {
+    ctx.fillStyle = "lime";
+    ctx.font = "48px Arial";
+    ctx.fillText("Vyhral si!", 330, 260);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
