@@ -11,7 +11,7 @@
         justify-content: center;
         align-items: center;
         height: 100vh;
-        user-select: none;
+        user-select: none; /* odstránil som neplatný text */
     }
     canvas {
         background: #111;
@@ -22,7 +22,6 @@
 <body>
 
 <canvas id="game" width="900" height="300"></canvas>
-
 <audio id="music" src="music.mp3"></audio>
 
 <script>
@@ -30,7 +29,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const music = document.getElementById("music");
 
-// ===== GAME CONSTANTS =====
+// ===== CONSTANTS =====
 const GROUND_Y = 230;
 const SPEED = 6;
 const GRAVITY = 0.6;
@@ -46,7 +45,7 @@ const player = {
     onGround: true
 };
 
-// ===== LEVEL (čas v sekundách) =====
+// ===== LEVEL =====
 const level = [
     { t: 1.5, type: "spike" },
     { t: 2.8, type: "spike" },
@@ -81,8 +80,7 @@ function resetGame() {
     player.onGround = true;
     gameOver = false;
     startTime = performance.now();
-    music.currentTime = 0;
-    music.play();
+    level.forEach(o => o.spawned = false);
 }
 
 // ===== UPDATE =====
@@ -171,11 +169,14 @@ function loop(time) {
 
 // ===== INPUT =====
 function jump() {
-    if (!gameOver && player.onGround) {
-        player.vy = JUMP_FORCE;
-        player.onGround = false;
-    } else if (gameOver) {
-        level.forEach(o => o.spawned = false);
+    if (!gameOver) {
+        if (player.onGround) {
+            player.vy = JUMP_FORCE;
+            player.onGround = false;
+        }
+        // Spusti hudbu iba pri prvom skoku
+        if (music.paused) music.play();
+    } else {
         resetGame();
     }
 }
