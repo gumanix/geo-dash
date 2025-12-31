@@ -1,113 +1,193 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-    <meta charset="UTF-8">
-    <title>Geo Svet 2D</title>
-
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(#1e90ff, #87ceeb);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        .box {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            width: 320px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-
-        h1, h2 {
-            margin-bottom: 20px;
-        }
-
-        button {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            font-size: 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #1e90ff;
-            color: white;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        input[type="range"] {
-            width: 100%;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Mini Geometry Dash</title>
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        user-select: none;
+    }
+    canvas {
+        background: #111;
+        border: 3px solid #0ff;
+    }
+</style>
 </head>
 <body>
 
-    <!-- MENU -->
-    <div id="menu" class="box">
-        <h1>🌍 GEO SVET 2D</h1>
-        <button onclick="startGame()">▶ Začať hru</button>
-        <button onclick="openSettings()">⚙ Nastavenia</button>
-        <button onclick="openAbout()">ℹ O hre</button>
-    </div>
+<canvas id="game" width="900" height="300"></canvas>
 
-    <!-- NASTAVENIA -->
-    <div id="settings" class="box hidden">
-        <h2>Nastavenia</h2>
-        <p>Hlasitosť</p>
-        <input type="range" min="0" max="100" value="50">
-        <button onclick="backToMenu()">⬅ Späť</button>
-    </div>
+<audio id="music" src="music.mp3"></audio>
 
-    <!-- O HRE -->
-    <div id="about" class="box hidden">
-        <h2>O hre</h2>
-        <p>
-            Geo Svet 2D je jednoduchá 2D geografická hra,
-            kde sa učíš o krajinách, mapách a svete.
-        </p>
-        <button onclick="backToMenu()">⬅ Späť</button>
-    </div>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const music = document.getElementById("music");
 
-    <script>
-        const menu = document.getElementById("menu");
-        const settings = document.getElementById("settings");
-        const about = document.getElementById("about");
+// ===== GAME CONSTANTS =====
+const GROUND_Y = 230;
+const SPEED = 6;
+const GRAVITY = 0.6;
+const JUMP_FORCE = -12;
 
-        function startGame() {
-            alert("🎮 Tu sa neskôr spustí samotná hra!");
-            // sem neskôr dáme canvas alebo presmerovanie
+// ===== PLAYER =====
+const player = {
+    x: 120,
+    y: GROUND_Y,
+    size: 30,
+    vy: 0,
+    rotation: 0,
+    onGround: true
+};
+
+// ===== LEVEL (čas v sekundách) =====
+const level = [
+    { t: 1.5, type: "spike" },
+    { t: 2.8, type: "spike" },
+    { t: 4.0, type: "block" },
+    { t: 5.2, type: "spike" },
+    { t: 6.0, type: "spike" },
+    { t: 7.5, type: "block" },
+    { t: 9.0, type: "spike" }
+];
+
+let obstacles = [];
+let startTime = null;
+let gameOver = false;
+
+// ===== SPAWN =====
+function spawnObstacle(type) {
+    obstacles.push({
+        x: canvas.width,
+        y: type === "spike" ? GROUND_Y + 10 : GROUND_Y,
+        w: 30,
+        h: type === "spike" ? 30 : 40,
+        type
+    });
+}
+
+// ===== RESET =====
+function resetGame() {
+    obstacles = [];
+    player.y = GROUND_Y;
+    player.vy = 0;
+    player.rotation = 0;
+    player.onGround = true;
+    gameOver = false;
+    startTime = performance.now();
+    music.currentTime = 0;
+    music.play();
+}
+
+// ===== UPDATE =====
+function update(time) {
+    if (gameOver) return;
+
+    if (!startTime) startTime = time;
+    const elapsed = (time - startTime) / 1000;
+
+    // Spawn level objects
+    level.forEach(obj => {
+        if (!obj.spawned && elapsed >= obj.t) {
+            spawnObstacle(obj.type);
+            obj.spawned = true;
         }
+    });
 
-        function openSettings() {
-            menu.classList.add("hidden");
-            settings.classList.remove("hidden");
-        }
+    // Player physics
+    player.vy += GRAVITY;
+    player.y += player.vy;
 
-        function openAbout() {
-            menu.classList.add("hidden");
-            about.classList.remove("hidden");
-        }
+    if (player.y >= GROUND_Y) {
+        player.y = GROUND_Y;
+        player.vy = 0;
+        player.onGround = true;
+        player.rotation = 0;
+    } else {
+        player.rotation += 0.2;
+    }
 
-        function backToMenu() {
-            settings.classList.add("hidden");
-            about.classList.add("hidden");
-            menu.classList.remove("hidden");
+    // Move obstacles
+    obstacles.forEach(o => o.x -= SPEED);
+    obstacles = obstacles.filter(o => o.x + o.w > 0);
+
+    // Collision
+    obstacles.forEach(o => {
+        if (
+            player.x < o.x + o.w &&
+            player.x + player.size > o.x &&
+            player.y < o.y + o.h &&
+            player.y + player.size > o.y
+        ) {
+            gameOver = true;
+            music.pause();
         }
-    </script>
+    });
+}
+
+// ===== DRAW =====
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Ground
+    ctx.fillStyle = "#0ff";
+    ctx.fillRect(0, GROUND_Y + 30, canvas.width, 5);
+
+    // Player
+    ctx.save();
+    ctx.translate(player.x + 15, player.y + 15);
+    ctx.rotate(player.rotation);
+    ctx.fillStyle = "#f0f";
+    ctx.fillRect(-15, -15, player.size, player.size);
+    ctx.restore();
+
+    // Obstacles
+    obstacles.forEach(o => {
+        ctx.fillStyle = o.type === "spike" ? "#ff3333" : "#ffaa00";
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+    });
+
+    if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "32px Arial";
+        ctx.fillText("GAME OVER", 350, 150);
+        ctx.font = "16px Arial";
+        ctx.fillText("SPACE / KLIK = RESTART", 340, 180);
+    }
+}
+
+// ===== LOOP =====
+function loop(time) {
+    update(time);
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// ===== INPUT =====
+function jump() {
+    if (!gameOver && player.onGround) {
+        player.vy = JUMP_FORCE;
+        player.onGround = false;
+    } else if (gameOver) {
+        level.forEach(o => o.spawned = false);
+        resetGame();
+    }
+}
+
+document.addEventListener("keydown", e => {
+    if (e.code === "Space") jump();
+});
+canvas.addEventListener("click", jump);
+
+// START
+requestAnimationFrame(loop);
+</script>
 
 </body>
 </html>
-
