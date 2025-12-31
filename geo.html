@@ -1,101 +1,113 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-<meta charset="UTF-8">
-<title>Geo Svet</title>
-<style>
-body{margin:0;background:#111;display:flex;justify-content:center;align-items:center;height:100vh}
-canvas{background:#222;border:3px solid #555}
-</style>
+    <meta charset="UTF-8">
+    <title>Geo Svet 2D</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(#1e90ff, #87ceeb);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            width: 320px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        h1, h2 {
+            margin-bottom: 20px;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1e90ff;
+            color: white;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
-<canvas id="c" width="900" height="500"></canvas>
-<script>
-const c=document.getElementById("c");
-const x=c.getContext("2d");
 
-let state="menu";
-let level=0;
-let speed=4;
-let gravity=0.8;
-let mouse=false;
+    <!-- MENU -->
+    <div id="menu" class="box">
+        <h1>🌍 GEO SVET 2D</h1>
+        <button onclick="startGame()">▶ Začať hru</button>
+        <button onclick="openSettings()">⚙ Nastavenia</button>
+        <button onclick="openAbout()">ℹ O hre</button>
+    </div>
 
-const colors=["red","lime","cyan","yellow"];
-let colorIndex=0;
+    <!-- NASTAVENIA -->
+    <div id="settings" class="box hidden">
+        <h2>Nastavenia</h2>
+        <p>Hlasitosť</p>
+        <input type="range" min="0" max="100" value="50">
+        <button onclick="backToMenu()">⬅ Späť</button>
+    </div>
 
-const player={x:120,y:360,w:40,h:40,vy:0,ground:true,mode:"cube",color:colors[0]};
+    <!-- O HRE -->
+    <div id="about" class="box hidden">
+        <h2>O hre</h2>
+        <p>
+            Geo Svet 2D je jednoduchá 2D geografická hra,
+            kde sa učíš o krajinách, mapách a svete.
+        </p>
+        <button onclick="backToMenu()">⬅ Späť</button>
+    </div>
 
-const levels=[
- {spikes:[500,650,800],rocket:null},
- {spikes:[450,600,750],rocket:700},
- {spikes:[400,520,640,760],rocket:500}
-];
+    <script>
+        const menu = document.getElementById("menu");
+        const settings = document.getElementById("settings");
+        const about = document.getElementById("about");
 
-addEventListener("keydown",e=>{
- if(state==="menu"){
-  if(e.key==="a")colorIndex=(colorIndex+colors.length-1)%colors.length;
-  if(e.key==="d")colorIndex=(colorIndex+1)%colors.length;
-  if(e.key==="Enter"){player.color=colors[colorIndex];state="play";reset();}
- }
- if(e.code==="Space"&&player.ground&&player.mode==="cube")player.vy=-14;
-});
-addEventListener("mousedown",()=>mouse=true);
-addEventListener("mouseup",()=>mouse=false);
+        function startGame() {
+            alert("🎮 Tu sa neskôr spustí samotná hra!");
+            // sem neskôr dáme canvas alebo presmerovanie
+        }
 
-function reset(){player.y=360;player.vy=0;player.mode="cube";scroll=0}
-let scroll=0;
+        function openSettings() {
+            menu.classList.add("hidden");
+            settings.classList.remove("hidden");
+        }
 
-function rect(a,b){return a.x<a.x+a.w&&a.x+a.w>b.x&&a.y<a.y+a.h&&a.y+a.h>b.y}
+        function openAbout() {
+            menu.classList.add("hidden");
+            about.classList.remove("hidden");
+        }
 
-function update(){
- x.clearRect(0,0,900,500);
- if(state==="menu"){
-  x.fillStyle="white";x.font="48px Arial";
-  x.fillText("Geo Svet",350,140);
-  x.font="22px Arial";
-  x.fillText("ENTER - ŠTART",360,200);
-  x.fillText("A / D - FARBA",360,240);
-  x.fillStyle=colors[colorIndex];x.fillRect(430,270,40,40);
- }
- if(state==="play"){
-  scroll+=speed;
-  x.fillStyle="#444";x.fillRect(0,420,900,80);
+        function backToMenu() {
+            settings.classList.add("hidden");
+            about.classList.add("hidden");
+            menu.classList.remove("hidden");
+        }
+    </script>
 
-  if(player.mode==="cube")player.vy+=gravity;
-  else player.vy=mouse?-4:4;
-  player.y+=player.vy;
-
-  if(player.y+player.h>=420){player.y=420-player.h;player.vy=0;player.ground=true}else player.ground=false;
-
-  x.fillStyle=player.color;x.fillRect(player.x,player.y,player.w,player.h);
-
-  const lvl=levels[level];
-  x.fillStyle="red";
-  for(let s of lvl.spikes){
-   let sx=s-scroll;
-   x.beginPath();
-   x.moveTo(sx,420);
-   x.lineTo(sx+15,380);
-   x.lineTo(sx+30,420);
-   x.fill();
-   if(sx<player.x+40&&sx+30>player.x&&player.y+40>380)state="menu";
-  }
-
-  if(lvl.rocket){
-   let rx=lvl.rocket-scroll;
-   x.strokeStyle="yellow";x.strokeRect(rx,330,40,90);
-   if(rx<player.x+40&&rx+40>player.x)player.mode="rocket";
-  }
-
-  if(scroll>1000){level++;if(level>=levels.length)state="win";reset();}
- }
- if(state==="win"){
-  x.fillStyle="lime";x.font="48px Arial";
-  x.fillText("VYHRAL SI!",330,260);
- }
- requestAnimationFrame(update);
-}
-update();
-</script>
 </body>
 </html>
+
